@@ -1,7 +1,16 @@
 import * as THREE from 'three';
+const textureLoader = new THREE.TextureLoader();
+const gridTexture = textureLoader.load('textures/grid.png');
 
-export class World extends THREE.Mesh {
+export class World extends THREE.Group {
   #objectMap = new Map();
+
+  /**
+   * Returns the key for the object map given a set of coordinates
+   * @param {THREE.Vector2} coords
+   * @returns
+   */
+  getKey = (coords) => `${coords.x}-${coords.y}`;
 
   constructor(width, height) {
     super();
@@ -65,8 +74,13 @@ export class World extends THREE.Mesh {
   }
 
   createTerrain() {
+    gridTexture.repeat = new THREE.Vector2(this.width, this.height);
+    gridTexture.wrapS = THREE.RepeatWrapping;
+    gridTexture.wrapT = THREE.RepeatWrapping;
+    gridTexture.colorSpace = THREE.SRGBColorSpace;
+
     const terrainMaterial = new THREE.MeshStandardMaterial({
-      color: 0x50a000,
+      map: gridTexture,
     });
     const terrainGeometry = new THREE.PlaneGeometry(
       this.width,
@@ -75,6 +89,7 @@ export class World extends THREE.Mesh {
       this.height
     );
     this.terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
+    this.terrain.name = 'Terrain';
     this.terrain.rotation.x = -Math.PI / 2;
     this.terrain.position.set(this.width / 2, 0, this.height / 2);
     this.add(this.terrain);
@@ -91,17 +106,19 @@ export class World extends THREE.Mesh {
     });
 
     for (let i = 0; i < this.treeCount; i++) {
-      const treeMesh = new THREE.Mesh(treeGeometry, treeMaterial);
       const coords = new THREE.Vector2(
         Math.floor(this.width * Math.random()),
         Math.floor(this.height * Math.random())
       );
 
-      if (this.#objectMap.has(`${coords.x}-${coords.y}`)) continue;
+      if (this.#objectMap.has(this.getKey(coords))) continue;
+
+      const treeMesh = new THREE.Mesh(treeGeometry, treeMaterial);
+      treeMesh.name = `Tree (${coords.x},${coords.y})`;
 
       treeMesh.position.set(coords.x + 0.5, treeHeight / 2, coords.y + 0.5);
       this.trees.add(treeMesh);
-      this.#objectMap.set(`${coords.x}-${coords.y}`, treeMesh);
+      this.#objectMap.set(this.getKey(coords), treeMesh);
     }
   }
 
@@ -119,21 +136,23 @@ export class World extends THREE.Mesh {
     for (let i = 0; i < this.rockCount; i++) {
       const radius = minRockRadius + Math.random() * (maxRockRadius - minRockRadius);
       const height = minRockHeight + Math.random() * (maxRockHeight - minRockHeight);
-      const rockGeometry = new THREE.SphereGeometry(radius, 6, 5);
-      const rockMesh = new THREE.Mesh(rockGeometry, rockMaterial);
 
       const coords = new THREE.Vector2(
         Math.floor(this.width * Math.random()),
         Math.floor(this.height * Math.random())
       );
 
-      if (this.#objectMap.has(`${coords.x}-${coords.y}`)) continue;
+      if (this.#objectMap.has(this.getKey(coords))) continue;
+
+      const rockGeometry = new THREE.SphereGeometry(radius, 6, 5);
+      const rockMesh = new THREE.Mesh(rockGeometry, rockMaterial);
+      rockMesh.name = `Rock (${coords.x},${coords.y})`;
 
       rockMesh.position.set(coords.x + 0.5, 0, coords.y + 0.5);
       rockMesh.scale.y = height;
       this.rocks.add(rockMesh);
 
-      this.#objectMap.set(`${coords.x}-${coords.y}`, rockMesh);
+      this.#objectMap.set(this.getKey(coords), rockMesh);
     }
   }
 
@@ -148,19 +167,31 @@ export class World extends THREE.Mesh {
 
     for (let i = 0; i < this.bushCount; i++) {
       const radius = minBushRadius + Math.random() * (maxBushRadius - minBushRadius);
-      const bushGeometry = new THREE.SphereGeometry(radius, 8, 8);
-      const bushMesh = new THREE.Mesh(bushGeometry, bushMaterial);
 
       const coords = new THREE.Vector2(
         Math.floor(this.width * Math.random()),
         Math.floor(this.height * Math.random())
       );
 
-      if (this.#objectMap.has(`${coords.x}-${coords.y}`)) continue;
+      if (this.#objectMap.has(this.getKey(coords))) continue;
+
+      const bushGeometry = new THREE.SphereGeometry(radius, 8, 8);
+      const bushMesh = new THREE.Mesh(bushGeometry, bushMaterial);
+      bushMesh.name = `Bush (${coords.x},${coords.y})`;
 
       bushMesh.position.set(coords.x + 0.5, radius, coords.y + 0.5);
       this.bushes.add(bushMesh);
-      this.#objectMap.set(`${coords.x}-${coords.y}`, bushMesh);
+      this.#objectMap.set(this.getKey(coords), bushMesh);
     }
+  }
+
+  /**
+   * Returns the object at `coords` if one exists, otherwise returns null
+   * @param {THREE.Vector2} coords
+   * @returns {object | null}
+   */
+
+  getObject(coords) {
+    return this.#objectMap.get(this.getKey(coords)) ?? null;
   }
 }
