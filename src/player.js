@@ -7,11 +7,15 @@ export class Player extends THREE.Mesh {
    */
   raycaster = new THREE.Raycaster();
 
+  path = [];
+  pathIndex = 0;
+  pathUpdater = null;
+
   constructor(camera, world) {
     super();
     this.geometry = new THREE.CapsuleGeometry(0.25, 0.5);
     this.material = new THREE.MeshStandardMaterial({ color: 0x4040c0 });
-    this.position.set(5.5, 0.5, 5.5);
+    this.position.set(1.5, 0.5, 5.5);
 
     this.camera = camera;
     this.world = world;
@@ -43,7 +47,34 @@ export class Player extends THREE.Mesh {
         Math.floor(intersections[0].point.x),
         Math.floor(intersections[0].point.z)
       );
-      search(playerCoords, selectedCoords, this.world);
+
+      clearInterval(this.pathUpdater);
+
+      // Find path from the player's current position to the slected square
+      this.path = search(playerCoords, selectedCoords, this.world);
+
+      // If no path found, return early
+      if (this.path === null || this.path.length === 0) return;
+
+      // DEBUG: Show the path as breadcrumbs
+      this.world.path.clear();
+      this.path.forEach((coords) => {
+        const node = new THREE.Mesh(new THREE.SphereGeometry(0.1), new THREE.MeshBasicMaterial());
+        node.position.set(coords.x + 0.5, 0, coords.y + 0.5);
+        this.world.path.add(node);
+      });
+
+      // Trigger interval function to update player's position
+      this.pathIndex = 0;
+      this.pathUpdater = setInterval(this.updatePosition.bind(this), 500);
     }
+  }
+  updatePosition() {
+    if (this.pathIndex === this.path.length) {
+      clearInterval(this.pathUpdater);
+      return;
+    }
+    const curr = this.path[this.pathIndex++];
+    this.position.set(curr.x + 0.5, 0.5, curr.y + 0.5);
   }
 }
